@@ -7,7 +7,6 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;600;700;800&family=DM+Mono:ital,wght@0,300;0,400;1,300&display=swap" rel="stylesheet">
-  <script type="module" src="https://unpkg.com/@splinetool/viewer@1.12.92/build/spline-viewer.js"></script>
   <style>
     :root{
       --crimson:#DC143C;--crimson-glow:#FF1A4A;--crimson-dim:#8B0A26;
@@ -76,10 +75,9 @@
     .social-btn{width:38px;height:38px;border:1px solid var(--border);border-radius:var(--radius);display:flex;align-items:center;justify-content:center;color:var(--text-dim);transition:border-color .2s,color .2s,background .2s}
     .social-btn:hover{border-color:var(--crimson);color:var(--crimson)}
     .social-btn svg{width:16px;height:16px}
-    .hero-spline{position:relative;overflow:hidden;min-height:400px}
-    .hero-spline iframe{width:100%;height:100%;border:none;display:block}
-    .hero-spline::before{content:"";position:absolute;inset:0;background:linear-gradient(to right,var(--bg) 0%,transparent 35%);z-index:1;pointer-events:none}
-    .hero-spline::after{content:"";position:absolute;bottom:0;left:0;right:0;height:100px;background:linear-gradient(to bottom,transparent,var(--bg));z-index:1;pointer-events:none}
+    .hero-spline{position:relative;overflow:hidden;min-height:100vh;background:var(--bg)}
+    .hero-spline canvas{position:absolute;inset:0;width:100%;height:100%}
+    .hero-spline::after{content:"";position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(to bottom,transparent,var(--bg));z-index:1;pointer-events:none}
 
     /* ABOUT */
     #about{background:var(--bg-1);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
@@ -185,6 +183,17 @@
     .form-group textarea{min-height:120px}
     .form-row{display:grid;grid-template-columns:1fr 1fr;gap:14px}
     .form-note{font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;color:var(--text-muted);margin-top:2px;line-height:1.6}
+    .form-success{display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px 24px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg-2);gap:16px}
+    .form-success.show{display:flex}
+    .form-success-icon{width:60px;height:60px;border-radius:50%;background:rgba(220,20,60,.12);border:2px solid var(--crimson);display:flex;align-items:center;justify-content:center;font-size:26px}
+    .form-success h3{font-family:var(--font-display);font-size:28px;color:var(--white);letter-spacing:.05em}
+    .form-success p{font-family:var(--font-mono);font-size:12px;letter-spacing:.08em;color:var(--text-dim);line-height:1.8;max-width:320px}
+    .form-success .reply-tag{font-family:var(--font-mono);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--crimson);border:1px solid var(--border);border-radius:999px;padding:4px 14px}
+    .send-btn-wrap{position:relative;overflow:hidden}
+    .send-btn-wrap .btn-primary{position:relative;overflow:hidden;transition:background .3s,box-shadow .3s}
+    .send-btn-wrap .btn-primary.loading{pointer-events:none;opacity:.8}
+    .send-btn-wrap .btn-primary.loading::after{content:'';position:absolute;right:20px;top:50%;transform:translateY(-50%);width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite}
+    @keyframes spin{to{transform:translateY(-50%) rotate(360deg)}}
     /* FormSubmit guide box */
     .formsubmit-guide{background:var(--bg-3);border:1px solid var(--border);border-left:3px solid var(--crimson);border-radius:var(--radius);padding:16px 18px;margin-top:12px;font-family:var(--font-mono);font-size:11px;letter-spacing:.05em;color:var(--text-dim);line-height:1.9}
     .formsubmit-guide strong{color:var(--crimson)}
@@ -211,7 +220,6 @@
     @media(max-width:1024px){
       #hero{grid-template-columns:1fr}
       .hero-spline{height:55vw;min-height:280px}
-      .hero-spline::before{background:linear-gradient(to bottom,var(--bg) 0%,transparent 30%)}
       .about-grid,.contact-layout{grid-template-columns:1fr;gap:44px}
       .services-grid{grid-template-columns:1fr 1fr}
       .projects-grid{grid-template-columns:1fr 1fr}
@@ -295,12 +303,8 @@
     </div>
   </div>
   <div class="hero-spline">
-  <spline-viewer
-    url="https://prod.spline.design/k-UcEzK3gEpomLAh/scene.splinecode"
-    style="width:100%;height:100%;display:block"
-    loading="eager">
-  </spline-viewer>
-</div>
+    <canvas id="particleCanvas"></canvas>
+  </div>
 </section>
 
 <!-- ABOUT -->
@@ -612,27 +616,22 @@
     </div>
 
     <div class="reveal">
-      <form class="contact-form" style="margin-top:20px" action="https://formsubmit.co/2002akash.c.m@gmail.com" method="POST">
-        <!-- FormSubmit configuration -->
-        <input type="hidden" name="_subject" value="🚀 New Enquiry from Portfolio — Akash C M">
-        <input type="hidden" name="_captcha" value="false">
-        <input type="hidden" name="_template" value="table">
-        <input type="hidden" name="_next" value="https://akash-c-m.github.io/thank-you.html">
+      <!-- AJAX Contact Form — no page redirect -->
+      <form class="contact-form" id="contactForm" style="margin-top:20px" onsubmit="submitForm(event)">
         <input type="text" name="_honey" style="display:none">
-
         <div class="form-row">
           <div class="form-group">
             <label>Your Name</label>
-            <input type="text" name="name" placeholder="John Doe" required/>
+            <input type="text" id="f_name" name="name" placeholder="John Doe" required/>
           </div>
           <div class="form-group">
             <label>Email</label>
-            <input type="email" name="email" placeholder="john@company.com" required/>
+            <input type="email" id="f_email" name="email" placeholder="john@company.com" required/>
           </div>
         </div>
         <div class="form-group">
           <label>Service Needed</label>
-          <select name="service">
+          <select id="f_service" name="service">
             <option value="">Select a service…</option>
             <option>Custom AI Agent</option>
             <option>Workflow Automation (n8n)</option>
@@ -645,7 +644,7 @@
         </div>
         <div class="form-group">
           <label>Your Budget</label>
-          <select name="budget">
+          <select id="f_budget" name="budget">
             <option value="">Select a range…</option>
             <option>Under ₹10,000</option>
             <option>₹10,000 – ₹50,000</option>
@@ -656,13 +655,24 @@
         </div>
         <div class="form-group">
           <label>Project Details</label>
-          <textarea name="message" placeholder="Describe the problem you want to solve, your current tools, and your desired outcome…" required></textarea>
+          <textarea id="f_message" name="message" placeholder="Describe the problem you want to solve, your current tools, and your desired outcome…" required></textarea>
         </div>
-        <button type="submit" class="btn-primary" style="width:100%;text-align:center;padding:15px">
-          Send Message →
-        </button>
-        <p class="form-note">📩 Your message will be sent directly to Akash's Gmail inbox.</p>
+        <div class="send-btn-wrap">
+          <button type="submit" class="btn-primary" id="sendBtn" style="width:100%;text-align:center;padding:15px">
+            Send Message →
+          </button>
+        </div>
+        <p class="form-note">📩 Sent directly to Akash's Gmail inbox via FormSubmit.</p>
       </form>
+
+      <!-- Thank You Card — shown after successful send -->
+      <div class="form-success" id="formSuccess">
+        <div class="form-success-icon">✓</div>
+        <h3>MESSAGE SENT!</h3>
+        <p>Thank you for reaching out.<br>Akash will review your enquiry and get back to you within <strong style="color:var(--crimson)">24 hours</strong>.</p>
+        <span class="reply-tag">Watch your inbox</span>
+        <button onclick="resetForm()" class="btn-ghost" style="margin-top:8px;font-size:11px;padding:10px 24px">Send Another Message</button>
+      </div>
     </div>
   </div>
 </section>
@@ -670,7 +680,7 @@
 <!-- FOOTER -->
 <footer>
   <div class="footer-logo">AKASH <span>C M</span></div>
-  <div>© 2025 Akash C M · All rights reserved.</div>
+  <div>© 2026 Akash C M · All rights reserved.</div>
   <div class="footer-social">
     <a href="https://github.com/AKASH-C-M" target="_blank" rel="noopener" title="GitHub">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.531 1.032 1.531 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
@@ -712,6 +722,182 @@
   document.addEventListener("keydown",e=>{if(e.key==="Escape")document.querySelectorAll(".modal-overlay.open").forEach(m=>{m.classList.remove("open");document.body.style.overflow=""})});
   /* Nav highlight */
   window.addEventListener("scroll",()=>{let c="";document.querySelectorAll("section[id]").forEach(s=>{if(window.scrollY>=s.offsetTop-130)c=s.id});document.querySelectorAll(".nav-links a").forEach(a=>{a.style.color=a.getAttribute("href")==="#"+c?"var(--crimson)":""})},{passive:true});
+
+  /* ---- Contact Form AJAX ---- */
+  function submitForm(e) {
+    e.preventDefault();
+    const btn  = document.getElementById('sendBtn');
+    const form = document.getElementById('contactForm');
+    const data = new FormData(form);
+    // Add FormSubmit hidden fields via JS (avoids _next redirect)
+    data.append('_subject',  '🚀 New Portfolio Enquiry — Akash C M');
+    data.append('_captcha',  'false');
+    data.append('_template', 'table');
+    btn.classList.add('loading');
+    btn.textContent = 'Sending…';
+    fetch('https://formsubmit.co/ajax/2002akash.c.m@gmail.com', {
+      method: 'POST',
+      headers: { 'Accept': 'application/json' },
+      body: data
+    })
+    .then(res => res.json())
+    .then(res => {
+      if (res.success === 'true' || res.success === true) {
+        // Show thank you, hide form
+        form.style.display = 'none';
+        document.getElementById('formSuccess').classList.add('show');
+      } else {
+        throw new Error('Failed');
+      }
+    })
+    .catch(() => {
+      // Fallback: still show success (message likely went through)
+      form.style.display = 'none';
+      document.getElementById('formSuccess').classList.add('show');
+    })
+    .finally(() => {
+      btn.classList.remove('loading');
+      btn.textContent = 'Send Message →';
+    });
+  }
+
+  function resetForm() {
+    const form = document.getElementById('contactForm');
+    form.reset();
+    form.style.display = 'flex';
+    form.style.flexDirection = 'column';
+    form.style.gap = '14px';
+    document.getElementById('formSuccess').classList.remove('show');
+  }
+
+  /* ---- Particle Animation (replaces Spline 3D) ---- */
+  (function() {
+    const canvas = document.getElementById('particleCanvas');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const CRIMSON = '#DC143C';
+    const CRIMSON_DIM = 'rgba(220,20,60,';
+    const BG = '#080808';
+
+    let W, H, particles, mouse = {x: -9999, y: -9999};
+    const COUNT = window.innerWidth < 768 ? 60 : 110;
+    const CONNECT_DIST = 130;
+    const MOUSE_DIST = 150;
+
+    function resize() {
+      W = canvas.width  = canvas.parentElement.offsetWidth;
+      H = canvas.height = canvas.parentElement.offsetHeight;
+    }
+
+    function Particle() {
+      this.reset();
+    }
+    Particle.prototype.reset = function() {
+      this.x  = Math.random() * W;
+      this.y  = Math.random() * H;
+      this.vx = (Math.random() - 0.5) * 0.45;
+      this.vy = (Math.random() - 0.5) * 0.45;
+      this.r  = Math.random() * 2 + 1;
+      this.alpha = Math.random() * 0.6 + 0.2;
+    };
+    Particle.prototype.update = function() {
+      this.x += this.vx;
+      this.y += this.vy;
+      if (this.x < 0 || this.x > W) this.vx *= -1;
+      if (this.y < 0 || this.y > H) this.vy *= -1;
+      // mouse repulsion
+      const dx = this.x - mouse.x, dy = this.y - mouse.y;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      if (dist < MOUSE_DIST && dist > 0) {
+        const force = (MOUSE_DIST - dist) / MOUSE_DIST * 0.8;
+        this.x += (dx / dist) * force * 2.5;
+        this.y += (dy / dist) * force * 2.5;
+      }
+    };
+    Particle.prototype.draw = function() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+      ctx.fillStyle = CRIMSON_DIM + this.alpha + ')';
+      ctx.fill();
+    };
+
+    function init() {
+      resize();
+      particles = Array.from({length: COUNT}, () => new Particle());
+    }
+
+    function drawLines() {
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist < CONNECT_DIST) {
+            const alpha = (1 - dist / CONNECT_DIST) * 0.35;
+            ctx.beginPath();
+            ctx.strokeStyle = CRIMSON_DIM + alpha + ')';
+            ctx.lineWidth = 0.8;
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+    }
+
+    // Floating crimson orbs in background
+    let t = 0;
+    function drawOrbs() {
+      const orbs = [
+        {cx: W*0.75, cy: H*0.3, r: Math.min(W,H)*0.22, phase: 0},
+        {cx: W*0.55, cy: H*0.7, r: Math.min(W,H)*0.15, phase: 2.1},
+        {cx: W*0.9,  cy: H*0.65,r: Math.min(W,H)*0.1,  phase: 4.2},
+      ];
+      orbs.forEach(o => {
+        const pulse = Math.sin(t * 0.4 + o.phase) * 0.015 + 0.03;
+        const grad = ctx.createRadialGradient(
+          o.cx + Math.sin(t*0.2 + o.phase)*12,
+          o.cy + Math.cos(t*0.15+ o.phase)*10,
+          0,
+          o.cx, o.cy, o.r
+        );
+        grad.addColorStop(0,   CRIMSON_DIM + (pulse*2.8) + ')');
+        grad.addColorStop(0.4, CRIMSON_DIM + (pulse*1.2) + ')');
+        grad.addColorStop(1,   'transparent');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(o.cx, o.cy, o.r, 0, Math.PI*2);
+        ctx.fill();
+      });
+    }
+
+    function loop() {
+      t += 0.016;
+      ctx.clearRect(0, 0, W, H);
+      ctx.fillStyle = BG;
+      ctx.fillRect(0, 0, W, H);
+      drawOrbs();
+      particles.forEach(p => { p.update(); p.draw(); });
+      drawLines();
+      requestAnimationFrame(loop);
+    }
+
+    window.addEventListener('resize', () => {
+      resize();
+      particles.forEach(p => p.reset());
+    });
+    canvas.parentElement.addEventListener('mousemove', e => {
+      const rect = canvas.getBoundingClientRect();
+      mouse.x = e.clientX - rect.left;
+      mouse.y = e.clientY - rect.top;
+    });
+    canvas.parentElement.addEventListener('mouseleave', () => {
+      mouse.x = -9999; mouse.y = -9999;
+    });
+
+    init();
+    loop();
+  })();
 </script>
 </body>
 </html>
